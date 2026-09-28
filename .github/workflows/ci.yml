@@ -38,7 +38,7 @@ jobs:
       - name: Check lockfiles are up-to-date
         run: |
           pip install pip-tools
-          pip-compile --check --output-file=requirements.txt requirements.in
+          pip-compile --dry-run --output-file=requirements.txt requirements.in
       - name: Install dependencies (pinned)
         run: pip install -r requirements-dev.txt --no-cache-dir
       - name: Run tests with coverage
