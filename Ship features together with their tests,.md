@@ -11,28 +11,27 @@ One of the biggest drivers of what buyers pay is whether the project builds and 
     Clone the repository into an empty directory and follow only the README: every missing step you hit is a step to add.
     Commit a lockfile for every package manager so installs are reproducible.
     Make the test command explicit in the README and CI, and ensure CI runs it on every push.
-Grow real commit history over multiple sessions high
-git_stats shows all 27 commits from one author in a single 2-hour window with zero tags, which is the weakest signal in the repo per the README's own admission.
-    Over the next weeks, land each new feature (e.g. Redis-backed Store, real Docker execution in agent/node_agent.py._execute) as its own commit paired with the test that proves it.
-    Avoid squashing or backdating; let git log show incremental dated commits spanning multiple days.
-    Tag a v0.1.0 release once the Redis store and real container execution land, using git tag -a v0.1.0.
-Commit an actual lockfile matching the README's claims high
-repo_stats.py finds no lockfiles_found despite README describing pip-compile-generated requirements.txt/requirements-dev.txt as pinned lockfiles installed by CI and Docker.
-    Run pip-compile requirements.in -o requirements.txt and pip-compile requirements-dev.in -o requirements-dev.txt in the repo root.
-    Commit requirements.txt and requirements-dev.txt to git so a fresh clone has pinned, reproducible dependencies.
-    Verify with pip install -r requirements-dev.txt on a clean virtualenv and confirm ci.yml's install steps succeed unchanged.
-Verify the Docker Compose path actually runs end to end medium
-README explicitly flags that docker compose up --build has 'not been build-tested' since no container runtime was available, undermining the reproducibility claim for a fresh-clone reviewer.
-    On a machine with Docker installed, run docker compose up --build from the repo root and capture the full simulator report output.
-    Fix any Dockerfile or docker-compose.yml issues surfaced (missing depends_on healthcheck wiring, port mappings, env vars).
-    Remove the 'not build-tested' caveat from README.md once verified and commit the fix plus a short note of the verified command output.
-Expand automated test count to match README's stated 45 tests medium
-repo_stats.py test_spec_sample only lists 5 spec files (test_integration_simulation, test_scheduler, test_logging, test_reliability, test_ledger) though README claims 45 tests and 88% coverage; the discrepancy should be closed with visible breadth.
-    Add tests/test_state.py covering Store.pop_next_assignable, requeue, and stale_nodes logic with at least 6 focused cases.
-    Add tests/test_main.py using FastAPI TestClient to cover /nodes/register, /jobs, /jobs/{job_id} 404 path, and /nodes list endpoint.
-    Run pytest --cov=orchestrator --cov=agent --cov-report=term and confirm the reported coverage percentage matches or exceeds the 88% claimed in README.md.
-Add minimal error tracking and wire real metrics low
-has_metrics is true in stats but README lists Prometheus/Grafana export as not implemented; there is no error_tracking configured, which matters more as this service grows beyond a single-session prototype.
-    Add a prometheus-client dependency to requirements.in and expose a /metrics endpoint in orchestrator/main.py tracking job counts and JCT histogram.
-    Wrap unhandled exceptions in orchestrator/main.py with a structured log.error call including a stack trace field before re-raising as HTTPException.
-    Add a tests/test_metrics.py asserting GET /metrics returns 200 and contains the new counter names.
+Commit a real lockfile and fix the lockfile gap CI already checks for medium
+repo_stats.py reports lockfiles_found: [] even though README describes a pip-compile workflow and CI has a 'Check lockfiles are up-to-date' step against requirements.in; the committed requirements.txt is either missing or not recognized as pinned.
+    Run pip-compile requirements.in -o requirements.txt and pip-compile requirements-dev.in -o requirements-dev.txt in the repo root to regenerate fully pinned lockfiles.
+    Commit both requirements.txt and requirements-dev.txt with the pip-compile header intact so CI's pip-compile --check step passes.
+    Verify with pip-compile --check --output-file=requirements.txt requirements.in exiting 0, matching the exact command already in .github/workflows/ci.yml.
+Spread development over real calendar time with small tested commits high
+git_stats shows all 37 commits landed by a single author in a 1-day span with zero tags, which the README itself flags as a limitation; buyers weight sustained, incremental history highly.
+    Pick one deferred item from the README table, e.g. 'Add Redis-backed Store implementation alongside the in-memory one', and implement it as its own commit with a matching test in tests/test_state.py.
+    Implement 'Replace NodeAgent._execute's simulated sleep with real Docker container execution' as a second, separate commit with a new test in tests/test_agent.py (currently absent from test_spec_sample).
+    Land each subsequent feature (e.g. Prometheus metrics for JCT/utilization mentioned in README next steps) as its own commit that includes the feature plus its test, repeated over multiple sessions/days rather than one burst.
+Actually build-test the Docker Compose setup that the README admits is unverified medium
+README explicitly states 'the Docker/Compose setup ... has not been build-tested in this environment' and has_devcontainer is false; docker-build in CI only builds the orchestrator image, not the full compose stack.
+    Run docker compose up --build locally against docker-compose.yml and orchestrator/Dockerfile, fixing any startup or healthcheck failures.
+    Add a CI job or step in .github/workflows/ci.yml that runs docker compose up --build --abort-on-container-exit and asserts the simulator container exits 0 with a JCT/success-rate report printed.
+    Remove the README caveat once verified, replacing it with the actual verified command output.
+Add tests for agent/node_agent.py and simulator/simulate.py directly medium
+test_spec_sample lists 8 test files (test_metrics, test_integration_simulation, test_scheduler, test_logging, test_reliability, test_state, test_main, test_ledger) but none dedicated to agent/node_agent.py's _execute or run_forever logic in isolation, or simulator/simulate.py's reporting functions.
+    Create tests/test_agent.py with unit tests for NodeAgent.poll_once and NodeAgent._execute using httpx mocking (respx or monkeypatch) to avoid a live server.
+    Create tests/test_simulate.py exercising submit_jobs and wait_and_report against a mocked httpx.Client to verify JCT calculation logic.
+    Update pytest --cov=orchestrator --cov=agent --cov-report=term in CI to also include --cov=simulator and raise --cov-fail-under from 50 to 70.
+Wrap Prometheus metric emission in typed error handling instead of a bare except-pass low
+orchestrator/main.py's _handle_job_result silently swallows all exceptions around JOB_RUNTIME_SECONDS.observe() with a bare except Exception: pass, which hides real bugs in the metrics path.
+    Edit orchestrator/main.py to catch a narrower exception type (or log.exception the failure) instead of the bare except Exception: pass around JOB_RUNTIME_SECONDS.observe(runtime_seconds).
+    Add a regression test in tests/test_metrics.py asserting that a metrics observation failure is logged rather than silently discarded.
