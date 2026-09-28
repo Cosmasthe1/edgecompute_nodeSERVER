@@ -67,4 +67,4 @@ def test_metrics_observation_failure_is_logged(monkeypatch, caplog):
             ),
         )
 
-    assert any("metrics" in record.message.lower() for record in caplog.records)
+    assert any("failed to record job runtime metric" in record.message for record in caplog.records)
