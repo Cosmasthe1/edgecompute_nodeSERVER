@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies (pinned)
         run: pip install -r requirements-dev.txt --no-cache-dir
       - name: Run tests with coverage
-        run: pytest --cov=orchestrator --cov=agent --cov-report=term --cov-fail-under=50
+        run: pytest --cov=orchestrator --cov=agent --cov=simulator --cov-report=term --cov-fail-under=70
 
   dependency-audit:
     runs-on: ubuntu-latest
