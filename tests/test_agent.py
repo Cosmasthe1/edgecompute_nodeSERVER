@@ -77,7 +77,7 @@ def test_poll_once_executes_and_buffers_result(monkeypatch):
     )
 
     monkeypatch.setattr(node_agent.random, "uniform", lambda a, b: 0.1)
-    monkeypatch.setattr(node_agent.random, "random", lambda: 0.0)
+    monkeypatch.setattr(node_agent.random, "random", lambda: 1.0)
     monkeypatch.setattr(node_agent.time, "sleep", lambda *_args, **_kwargs: None)
 
     agent.poll_once()
