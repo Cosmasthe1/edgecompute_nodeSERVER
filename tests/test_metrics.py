@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import orchestrator.main as main_module  # noqa: E402
 from orchestrator.main import app  # noqa: E402
-from orchestrator.models import Job, JobResult, JobStatus, ResourceProfile, Node  # noqa: E402
+from orchestrator.models import Job, JobResult, JobStatus, Node, ResourceProfile  # noqa: E402
 from orchestrator.state import STORE  # noqa: E402
 
 
