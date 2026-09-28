@@ -138,8 +138,7 @@ def _handle_job_result(node: Node, result: JobResult) -> None:
         try:
             JOB_RUNTIME_SECONDS.observe(runtime_seconds)
         except Exception:
-            # metrics should never break the app; swallow failures
-            pass
+            log.exception("failed to record job runtime metric")
         JOB_COMPLETED.inc()
     elif not result.success:
         log.info(
